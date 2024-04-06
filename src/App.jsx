@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 
 function App() {
-  const socket = io.connect('http://localhost:4500');
+  const socket = io.connect('https://chat-room-api-iota.vercel.app');
   const bottomRef = useRef(null);
   const [message, setMessage] = useState(null);
   const[chats,setChats] = useState([]);
