@@ -1,25 +1,60 @@
 import { useState,useEffect,useRef } from 'react'
 import './App.css'
 import { FaPaperPlane } from 'react-icons/fa';
-import {io}  from 'socket.io-client';
+// import {io}  from 'socket.io-client';
 import { v4 as uuidv4 } from 'uuid';
+import Ably from 'ably';
 
-
+const ably = new Ably.Realtime({ key: import.meta.env.VITE_ABLY_KEY});
+ 
 function App() {
-  const socket = io.connect('https://chat-room-api-iota.vercel.app');
   const bottomRef = useRef(null);
+  // const [socket, setSocket] = useState(null);
+  const [channel, setChannel] = useState(null);
   const [message, setMessage] = useState(null);
   const[chats,setChats] = useState([]);
   const [username, setUsername] = useState(localStorage.getItem('CRusername') || '');
 
 
+
   useEffect(() => {
-    socket.removeAllListeners('receiveMessage');
-    socket.on('receiveMessage', (newMessage, user) => {
-      console.log('Received Meassage',newMessage);
-      setChats((prevChats) => [...prevChats,{ message: newMessage, _id:uuidv4(), username:user}]);
-    });
+    
+    const newChannel = ably.channels.get('chat');
+    setChannel(newChannel);
+
+
+    newChannel.subscribe('message', (message) => {
+      const { data: newMessage} = message;
+
+    console.log('Received Message:', newMessage);
+      setChats((prevChats) => [...prevChats, { message: newMessage.message, _id: uuidv4(), username: newMessage.username }]);    });
+
+    return () => {
+      newChannel.unsubscribe();
+    };
   }, []);
+
+
+
+  // useEffect(() => {
+  //   const newSocket = io.connect('http://localhost:4500');
+  //   setSocket(newSocket);
+
+  //   return () => {
+  //     newSocket.disconnect(); 
+  //   };
+  // }, []);
+
+  // useEffect(() => {
+  //   if (!socket) return;
+
+  //   // Listen for incoming messages
+  //   socket.removeAllListeners('receiveMessage');
+  //   socket.on('receiveMessage', (newMessage, user) => {
+  //     console.log('Received Message:', newMessage);
+  //     setChats((prevChats) => [...prevChats, { message: newMessage, _id: uuidv4(), username: user }]);
+  //   });
+  // }, [socket]);
 
   const handleInputChange = (e) => {
     setMessage(e.target.value);
@@ -44,7 +79,8 @@ function App() {
         throw new Error(`Failed to submit data: ${errorMessage}`);
       }
       console.log('Data submitted successfully');
-      socket.emit('sendMessage', {message, username});
+      // socket.emit('sendMessage', {message, username});
+      channel.publish('message', { message, username });
       document.getElementById('messageInput').value = '';
       setMessage('')
     } catch (error) {
